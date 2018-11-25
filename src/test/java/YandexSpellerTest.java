@@ -1,9 +1,7 @@
-
 import beans.YandexSpellerResponse;
 import core.YandexSpellerApi;
 import io.restassured.RestAssured;
 import org.apache.http.HttpStatus;
-import org.assertj.core.api.AutoCloseableSoftAssertions;
 import org.hamcrest.Matchers;
 import org.testng.annotations.Test;
 
@@ -14,9 +12,7 @@ import static core.YandexSpellerApi.baseRequestConfiguration;
 import static core.YandexSpellerConstant.ParamsRequest.LANG;
 import static core.YandexSpellerConstant.ParamsRequest.TEXT;
 import static core.YandexSpellerConstant.WrongEnglishTexts.*;
-import static enums.Language.EN;
-import static enums.Language.EN_WRONG;
-import static enums.Language.RU;
+import static enums.Language.*;
 import static enums.RepeatWordsData.RU_TEXTS_WITHOUT_REPEAT_WORDS;
 import static enums.RepeatWordsData.RU_TEXTS_WITH_REPEAT_WORDS;
 import static enums.TextsWithDigits.*;
@@ -25,7 +21,6 @@ import static enums.СapitalizationData.EN_WORDS_WITH_RIGHT_REGISTER;
 import static enums.СapitalizationData.EN_WORDS_WITH_WRONG_REGISTER;
 import static enums.СorrectWordsData.СORRECT_EN_WORDS;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.testng.AssertJUnit.assertEquals;
 
