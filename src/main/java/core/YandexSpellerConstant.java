@@ -3,17 +3,35 @@ package core;
 
 public class YandexSpellerConstant {
 
+
     public enum ParamsRequest {
         TEXT("text"),
         LANG("lang"),
         OPTIONS("options"),
-        FORMAT("format"),
-        YANDEX_TEXTS("https://speller.yandex.net/services/spellservice.json/checkTexts");
+        YANDEX_TEXTS("https://speller.yandex.net/services/spellservice.json/checkTexts"),
+        PARAM_FORMAT( "format"),
+        UNSUPPORTED_FORMAT("Unsupported");;
 
         public String value;
 
         ParamsRequest(String value) {
             this.value = value;
+        }
+    }
+
+    public enum Options {
+        IGNORE_DIGITS("2"),
+        FIND_REPEAT_WORDS("8");
+
+        private String optionValue;
+
+        Options(String option){
+            this.optionValue = option;
+        }
+
+        @Override
+        public String toString() {
+            return optionValue;
         }
     }
 
@@ -28,16 +46,5 @@ public class YandexSpellerConstant {
             this.value = value;
         }
 
-    }
-
-    public enum TextsForIgnoreDigits {
-        DIGITS_123("hello123 sester"),
-        DIGITS_234("brother234 commanication");
-
-        public String value;
-
-        TextsForIgnoreDigits(String value) {
-            this.value = value;
-        }
     }
 }

@@ -3,6 +3,7 @@ package core;
 import beans.YandexSpellerResponse;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import enums.Language;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.builder.ResponseSpecBuilder;
@@ -12,12 +13,11 @@ import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
 import org.apache.http.HttpStatus;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import static core.YandexSpellerConstant.ParamsRequest.*;
 import static org.hamcrest.Matchers.lessThan;
+import static core.YandexSpellerConstant.*;
 
 public class YandexSpellerApi {
 
@@ -38,13 +38,20 @@ public class YandexSpellerApi {
             return this;
         }
 
-        public ApiBuilder options(List<String> options) {
-            spellerApi.params.put(OPTIONS.value, options);
+        public ApiBuilder texts(String... texts) {
+            List<String> textsContainer = new ArrayList<>();
+            textsContainer.addAll(Arrays.asList(texts));
+            spellerApi.params.put(TEXT.value, textsContainer);
             return this;
         }
 
-        public ApiBuilder language(String lang) {
-            spellerApi.params.put(LANG.value, Collections.singletonList(lang));
+        public ApiBuilder options(Options options) {
+            spellerApi.params.put(OPTIONS.value, Collections.singletonList(options.toString()));
+            return this;
+        }
+
+        public ApiBuilder language(Language lang) {
+            spellerApi.params.put(LANG.value, Collections.singletonList(lang.languageCode));
             return this;
         }
 

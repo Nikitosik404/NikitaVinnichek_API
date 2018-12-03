@@ -1,140 +1,169 @@
+
 import beans.YandexSpellerResponse;
 import core.YandexSpellerApi;
+import dataProviders.APIDataProvider;
+import enums.Language;
 import io.restassured.RestAssured;
 import org.apache.http.HttpStatus;
+import org.assertj.core.api.AutoCloseableSoftAssertions;
 import org.hamcrest.Matchers;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.List;
 
-import static core.YandexSpellerApi.baseRequestConfiguration;
-import static core.YandexSpellerConstant.ParamsRequest.LANG;
-import static core.YandexSpellerConstant.ParamsRequest.TEXT;
+import static core.YandexSpellerConstant.Options.FIND_REPEAT_WORDS;
+import static core.YandexSpellerConstant.Options.IGNORE_DIGITS;
+import static core.YandexSpellerConstant.ParamsRequest.*;
 import static core.YandexSpellerConstant.WrongEnglishTexts.*;
-import static enums.Language.*;
-import static enums.RepeatWordsData.RU_TEXTS_WITHOUT_REPEAT_WORDS;
-import static enums.RepeatWordsData.RU_TEXTS_WITH_REPEAT_WORDS;
-import static enums.TextsWithDigits.*;
-import static enums.WrongWordData.*;
-import static enums.СapitalizationData.EN_WORDS_WITH_RIGHT_REGISTER;
-import static enums.СapitalizationData.EN_WORDS_WITH_WRONG_REGISTER;
-import static enums.СorrectWordsData.СORRECT_EN_WORDS;
+import static enums.Language.EN_WRONG;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.equalTo;
 import static org.testng.AssertJUnit.assertEquals;
 
 public class YandexSpellerTest {
 
-    @Test
-    public void checkCorrectText() {
+    @Test(dataProvider = "correctWordsDataProvider", dataProviderClass = APIDataProvider.class)
+    public void checkCorrectText(String[] texts, Language lang) {
         List<List<YandexSpellerResponse>> answers = YandexSpellerApi.getYandexSpellerResponses(
                 YandexSpellerApi.with()
-                        .language(EN.languageCode)
-                        .text(СORRECT_EN_WORDS.value)
-                        .callApi()
-        );
-        for(int i=0; i < answers.size(); i++) {
-            assertEquals(0, answers.get(i).size());
-        }
-    }
-
-    @Test
-    public void checkWrongEnglishTexts() {
-        List<List<YandexSpellerResponse>> answers = YandexSpellerApi.getYandexSpellerResponses(
-                YandexSpellerApi.with()
-                        .text(EN_WORDS_WITH_MISTAKE.list)
-                        .language(EN.languageCode)
-                        .callApi()
-        );
-        System.out.println("Answer size " + answers.size());
-
-        List[] expectdResult = new List[]{EN_WORDS_WITHOUT_MISTAKE1.list, EN_WORDS_WITHOUT_MISTAKE2.list};
-        for (int i = 0; i < answers.size(); i++) {
-            assertThat(answers.get(i).get(0).s, equalTo(expectdResult[i]));
-        }
-    }
-
-    @Test
-    public void checkWrongRussianTexts() {
-        List<List<YandexSpellerResponse>> answers = YandexSpellerApi.getYandexSpellerResponses(
-                YandexSpellerApi.with()
-                        .text(RU_WORDS_WITH_MISTAKE.list)
-                        .language(RU.languageCode)
+                        .language(lang)
+                        .texts(texts)
                         .callApi()
         );
 
-        List[] expectdResult = new List[]{RU_WORDS_WITHOUT_MISTAKE1.list, RU_WORDS_WITHOUT_MISTAKE2.list};
-        for (int i = 0; i < answers.size(); i++) {
-            assertThat(answers.get(i).get(0).s, equalTo(expectdResult[i]));
+        //Check that the answer contains the correct number of options.
+        assertThat(answers.size(), equalTo(texts.length));
+
+        //Verification of the expected response and valid
+        try (AutoCloseableSoftAssertions soft = new AutoCloseableSoftAssertions()) {
+            for (int i = 0; i < texts.length; i++) {
+                //Check that current response array item is empty
+                soft.assertThat(answers.get(i)).as("Suggestion for the correct word <" + texts[i] + ">")
+                        .isEmpty();
+            }
         }
     }
 
-    @Test
-    public void checkTextsWithRepeat() {
+    @Test(dataProvider = "wrongWordDataProvider", dataProviderClass = APIDataProvider.class)
+    public void checkWrongTexts(String[] texts, Language lang, List[] expectedResult) {
         List<List<YandexSpellerResponse>> answers = YandexSpellerApi.getYandexSpellerResponses(
                 YandexSpellerApi.with()
-                        .text(RU_TEXTS_WITH_REPEAT_WORDS.list)
-                        .language(RU.languageCode)
+                        .texts(texts)
+                        .language(lang)
                         .callApi()
         );
 
-        List[] expectdResult = new List[]{RU_TEXTS_WITHOUT_REPEAT_WORDS.list};
-        for (int i = 0; i < answers.size(); i++) {
-            assertThat(answers.get(i).get(0).s, equalTo(expectdResult[i]));
+        //Check that the answer contains the correct number of options.
+        assertThat(answers.toArray(), arrayWithSize(texts.length));
+
+        //Verification of the expected response and valid
+        try (AutoCloseableSoftAssertions soft = new AutoCloseableSoftAssertions()) {
+            for (int i = 0; i < texts.length; i++) {
+                //Check that current response array item is not empty
+                if (!answers.get(i).isEmpty()) {
+                    soft.assertThat(answers.get(i).get(0).s)
+                            .as("Actual suggestions")
+                            .isEqualTo(expectedResult[i]);
+                } else {
+                    soft.assertThat(answers.get(i)).as("Actual suggestions").isEmpty();
+                }
+            }
         }
+
     }
 
-    @Test
-    public void checkTextsWithDigits() {
+
+    @Test(dataProvider = "repeatWordsDataProvider", dataProviderClass = APIDataProvider.class)
+    public void checkTextRepeatWords(String[] texts, String[] expectedResult, Language lang) {
         List<List<YandexSpellerResponse>> answers = YandexSpellerApi.getYandexSpellerResponses(
                 YandexSpellerApi.with()
-                        .text(EN_TEXTS_WITH_DIGITS.list)
-                        .language(EN.languageCode)
+                        .texts(texts)
+                        .language(lang)
+                        .options(FIND_REPEAT_WORDS)
                         .callApi()
         );
 
-        List[] expectdResult = new List[]{EN_TEXTS_WITHOUT_DIGITS1.list, EN_TEXTS_WITHOUT_DIGITS2.list};
-        for (int i = 0; i < answers.size(); i++) {
-            assertThat(answers.get(i).get(0).s, equalTo(expectdResult[i]));
+        //Check that the answer contains the correct number of options.
+        assertThat(answers.toArray(), arrayWithSize(texts.length));
+
+        //Verification of the expected response and valid
+        try (AutoCloseableSoftAssertions soft = new AutoCloseableSoftAssertions()) {
+            for (int i = 0; i < texts.length; i++) {
+                //Check that current response array item is not empty
+                soft.assertThat(answers.get(i))
+                        .as("Suggestion for string with repeated words <" + texts[i] + "> and lang <" + lang + ">")
+                        .isEqualTo(expectedResult[i]);
+            }
         }
     }
 
-    @Test
-    public void checkTextsWithWrongRegister() {
+    @Test(dataProvider = "wordsWithDigitsDataProvider", dataProviderClass = APIDataProvider.class)
+    public void checkTextsWithDigits(String[] texts, Language lang) {
         List<List<YandexSpellerResponse>> answers = YandexSpellerApi.getYandexSpellerResponses(
                 YandexSpellerApi.with()
-                        .text(EN_WORDS_WITH_WRONG_REGISTER.list)
-                        .language(EN.languageCode)
+                        .texts(texts)
+                        .language(lang)
+                        .options(IGNORE_DIGITS)
                         .callApi()
         );
 
-        assertThat(answers.size(), equalTo(EN_WORDS_WITH_WRONG_REGISTER.list.size()));
+        //Check that the answer contains the correct number of options.
+        assertThat(answers.toArray(), arrayWithSize(texts.length));
 
-        List[] expectdResult = new List[]{EN_WORDS_WITH_RIGHT_REGISTER.list, EN_WORDS_WITH_RIGHT_REGISTER.list};
-        for (int i = 0; i < answers.size(); i++) {
-            assertThat(answers.get(i).get(0).s, equalTo(expectdResult[i]));
+        //Verification of the expected response and valid
+        try (AutoCloseableSoftAssertions soft = new AutoCloseableSoftAssertions()) {
+            for (int i = 0; i < texts.length; i++) {
+                //Check that current response array item is empty
+                soft.assertThat(answers.get(i)).as("Suggestion for the alphanumeric string <" + texts[i] + ">")
+                        .isEmpty();
+            }
         }
     }
 
-    @Test
-    public void checkSuccessResponce() {
-        RestAssured
-                .given(YandexSpellerApi.baseRequestConfiguration())
-                .params(TEXT.value, СORRECT_EN_WORDS.value)
-                .get().prettyPeek()
-                .then().specification(YandexSpellerApi.successResponse());
+    @Test(dataProvider = "capitalizationDataProvider", dataProviderClass = APIDataProvider.class)
+    public void checkWordsWithWrongRegister(String[] texts, Language lang, List[] expectedSuggestions) {
+        List<List<YandexSpellerResponse>> answers = YandexSpellerApi.getYandexSpellerResponses(
+                YandexSpellerApi.with()
+                        .texts(texts)
+                        .language(lang)
+                        .callApi()
+        );
+
+        //Check that the answer contains the correct number of options.
+        assertThat(answers.toArray(), arrayWithSize(texts.length));
+
+        //Verification of the expected response and valid
+        try (AutoCloseableSoftAssertions soft = new AutoCloseableSoftAssertions()) {
+            for (int i = 0; i < texts.length; i++) {
+                //Check that current response array item is not empty
+                if (!answers.get(i).isEmpty()) {
+                    soft.assertThat(answers.get(i).get(0).s)
+                            .as("Actual suggestions")
+                            .isEqualTo(expectedSuggestions[i]);
+                } else {
+                    soft.assertThat(answers.get(i)).as("Actual suggestions for text <" + texts[i] + ">")
+                            .isEqualTo(expectedSuggestions[i]);
+                }
+            }
+        }
     }
+
 
     @Test
     public void checkWrongLanguage() {
         RestAssured
                 .given(YandexSpellerApi.baseRequestConfiguration())
-                .params(TEXT.value, СORRECT_EN_WORDS.value)
+                .params(TEXT.value, WRONG_BROTHER.value)
                 .params(LANG.value, EN_WRONG.languageCode)
-                .get().prettyPeek()
+                .log().all()
+                .when()
+                .get(YANDEX_TEXTS.value)
                 .then()
-                .body(Matchers.allOf(Matchers.containsString("SpellerService: Invalid parameter 'lang'")));
+                .assertThat()
+                .statusCode(HttpStatus.SC_BAD_REQUEST)
+                .body(Matchers.equalTo("SpellerService: Invalid parameter 'lang'"));
     }
 
 
@@ -151,16 +180,17 @@ public class YandexSpellerTest {
     }
 
     @Test
-    public void checkCorrectStatus() {
+    public void incorrectFormatTest() {
         RestAssured
-                .given(baseRequestConfiguration())
-                .queryParam(TEXT.value, EN_WORDS_WITH_MISTAKE)
-                .log().everything()
+                .given()
+                .queryParams(TEXT.value, WRONG_BROTHER)
+                .param(PARAM_FORMAT.value, UNSUPPORTED_FORMAT.value)
+                .log().all()
                 .when()
-                .get()
-                .prettyPeek()
+                .get(YANDEX_TEXTS.value)
                 .then()
                 .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+                .statusCode(HttpStatus.SC_BAD_REQUEST)
+                .body(Matchers.containsString("SpellerService: Invalid parameter 'format'"));
     }
 }
